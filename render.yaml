@@ -3,7 +3,6 @@ services:
     name: nairobi-location-intelligence
     runtime: docker
     plan: free
-    preDeployCommand: python manage.py migrate && python manage.py load_data --data-dir static/data
     envVars:
       - key: DEBUG
         value: "False"
