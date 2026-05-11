@@ -27,9 +27,18 @@ class Command(BaseCommand):
             default='../data',
             help='Directory containing the data files (default: ../data)'
         )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Reload data even when wards and POIs already exist.',
+        )
 
     def handle(self, *args, **options):
         data_dir = options['data_dir']
+
+        if not options['force'] and Ward.objects.exists() and PointOfInterest.objects.exists():
+            self.stdout.write('Ward and POI data already exists; skipping data load.')
+            return
 
         # Load ward boundaries
         self.stdout.write('Loading ward boundaries...')

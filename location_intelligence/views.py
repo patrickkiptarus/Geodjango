@@ -15,7 +15,7 @@ from django.db.models import Count, Q
 from .models import PointOfInterest, Ward
 
 
-MAP_POI_LIMIT = 5000
+MAP_POI_LIMIT = 1500
 
 
 @lru_cache(maxsize=1)
