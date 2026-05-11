@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}Community Needs - Nairobi Location Intelligence System{% endblock %}
+
+{% block extra_head %}
+<style>
+    .needs-hero {
+        background: #123f25;
+        color: #ffffff;
+        border-radius: 0 0 22px 22px;
+        margin: -1.5rem -0.75rem 1.5rem;
+        padding: 2.3rem 1.5rem;
+    }
+
+    .needs-shell {
+        max-width: 1640px;
+        margin: 0 auto;
+    }
+
+    .needs-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .needs-two-col {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .needs-number {
+        color: #166534;
+        font-size: 1.8rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .need-score {
+        min-width: 62px;
+        text-align: center;
+    }
+
+    .need-meter {
+        height: 9px;
+        min-width: 110px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e2e8f0;
+    }
+
+    .need-meter span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #86b96f, #d6b65c, #d9826b);
+    }
+
+    .needs-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #edf7f0;
+        color: #166534;
+        font-size: 0.76rem;
+        font-weight: 800;
+        padding: 0.22rem 0.55rem;
+        white-space: nowrap;
+    }
+
+    .action-list {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .action-item {
+        border: 1px solid rgba(22, 101, 52, 0.16);
+        border-radius: 12px;
+        padding: 0.75rem;
+        background: rgba(237, 247, 240, 0.08);
+    }
+
+    .service-strip {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 1rem;
+    }
+
+    .service-item {
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 12px;
+        padding: 0.8rem;
+    }
+
+    .table td,
+    .table th {
+        vertical-align: middle;
+    }
+
+    @media (max-width: 1100px) {
+        .needs-grid,
+        .needs-two-col,
+        .service-strip {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="needs-hero">
+    <div class="needs-shell">
+        <h1 class="mb-2">Community Needs Dashboard</h1>
+        <p class="mb-0">Find underserved wards, understand missing essential services, and generate simple ward reports for planning or investment decisions.</p>
+    </div>
+</div>
+
+<div class="needs-shell">
+    <div class="needs-grid">
+        <div class="card">
+            <div class="card-body">
+                <div class="needs-number">{{ wards_analyzed }}</div>
+                <strong>Wards Analysed</strong>
+                <div class="mt-2 text-muted">Inside Nairobi service area</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div class="needs-number">{{ strongest_need.need_score|default:"0" }}%</div>
+                <strong>Highest Need Score</strong>
+                <div class="mt-2 text-muted">{{ strongest_need.ward|default:"No ward available" }}</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div class="needs-number">{{ avg_gap }}</div>
+                <strong>Average Service Gap</strong>
+                <div class="mt-2 text-muted">Mean nearest-service distance in km</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div class="needs-number">{{ total_pois }}</div>
+                <strong>Mapped Places</strong>
+                <div class="mt-2 text-muted">{{ osm_share }}% from OpenStreetMap</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="service-strip">
+        {% for item in service_counts %}
+        <div class="service-item">
+            <div class="needs-number">{{ item.count }}</div>
+            <strong>{{ item.service }}</strong>
+            <div class="mt-2 text-muted">{{ item.label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="needs-two-col mb-3">
+        <div class="card">
+            <div class="card-header">Most Underserved Wards</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Ward</th>
+                                <th>Need</th>
+                                <th>Main Gap</th>
+                                <th>Health</th>
+                                <th>Education</th>
+                                <th>Finance</th>
+                                <th>Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in service_gaps %}
+                            <tr>
+                                <td><strong>{{ item.ward }}</strong></td>
+                                <td class="need-score">
+                                    <div class="need-meter"><span style="width: {{ item.need_score }}%"></span></div>
+                                    <small>{{ item.need_score }}%</small>
+                                </td>
+                                <td>{{ item.main_gap }}</td>
+                                <td>{{ item.health_km|default:"-" }} km</td>
+                                <td>{{ item.education_km|default:"-" }} km</td>
+                                <td>{{ item.finance_km|default:"-" }} km</td>
+                                <td>{{ item.recommendation }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7">No service gap records found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Ward Service Report</div>
+            <div class="card-body">
+                <form method="get" class="mb-3">
+                    <label class="form-label" for="ward">Choose a ward</label>
+                    <select class="form-select" id="ward" name="ward" onchange="this.form.submit()">
+                        {% for item in service_gaps_all %}
+                            <option value="{{ item.ward }}" {% if item.ward == selected_ward %}selected{% endif %}>{{ item.ward }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+
+                {% if ward_report %}
+                    <h4>{{ ward_report.ward }}</h4>
+                    <p>{{ ward_report.recommendation }}</p>
+                    <div class="mb-3">
+                        <span class="needs-pill">{{ ward_report.total_pois }} mapped places</span>
+                        {% if ward_report.gap %}
+                            <span class="needs-pill">{{ ward_report.gap.need_score }}% need score</span>
+                        {% endif %}
+                    </div>
+
+                    <strong>Services that need attention</strong>
+                    <div class="action-list mt-2 mb-3">
+                        {% for service in ward_report.missing_services %}
+                        <div class="action-item">
+                            <strong>{{ service.service }}</strong>
+                            <div>Nearest mapped service is {{ service.distance|default:"unknown" }} km from the ward centre.</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <strong>Current service mix</strong>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm">
+                            <tbody>
+                                {% for category, count in ward_report.counts.items %}
+                                <tr>
+                                    <td>{{ category }}</td>
+                                    <td>{{ count }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td>No mapped services in this ward.</td><td></td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="needs-two-col">
+        <div class="card">
+            <div class="card-header">Priority Actions</div>
+            <div class="card-body">
+                <div class="action-list">
+                    {% for item in priority_actions %}
+                    <div class="action-item">
+                        <div class="d-flex justify-content-between gap-2">
+                            <strong>{{ item.ward }}</strong>
+                            <span class="needs-pill">{{ item.score }}% need</span>
+                        </div>
+                        <div class="mt-2">{{ item.action }}</div>
+                    </div>
+                    {% empty %}
+                    <div class="action-item">No priority actions available.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Data Confidence</div>
+            <div class="card-body">
+                <p>This dashboard uses mapped POIs to estimate access. It should guide field checks, planning conversations, and investment screening rather than replace local verification.</p>
+                <div class="mb-2"><span class="needs-pill">{{ avg_quality }}% average data quality</span></div>
+                <div class="mb-2"><span class="needs-pill">{{ vague_share }}% records need better classification</span></div>
+                <div><span class="needs-pill">{{ other_share }}% still grouped as Other</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

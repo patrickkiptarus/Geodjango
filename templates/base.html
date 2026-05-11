@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nairobi Location Intelligence System{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    {% load django_bootstrap5 %}
+    {% bootstrap_css %}
+
+    <!-- Leaflet CSS -->
+    {% load leaflet_tags %}
+    {% leaflet_css %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --bg-main: #0c1222;
+            --bg-soft: #111a2d;
+            --panel: #17223a;
+            --card: #18243c;
+            --card-raised: #1e2b46;
+            --border: rgba(166, 184, 214, 0.24);
+            --text-main: #f7fbff;
+            --text-soft: #d9e6f5;
+            --text-muted: #aebdd0;
+            --teal: #35b5a7;
+            --blue: #4b8eb8;
+            --green: #5ca77b;
+            --amber: #d7a957;
+            --coral: #d97967;
+            --plum: #8c7cc3;
+            --shadow: 0 16px 34px rgba(3, 7, 18, 0.34);
+        }
+
+        html, body {
+            background:
+                linear-gradient(135deg, rgba(53, 181, 167, 0.08) 0%, transparent 28%),
+                linear-gradient(225deg, rgba(215, 169, 87, 0.07) 0%, transparent 30%),
+                linear-gradient(135deg, #0c1222 0%, #111a2d 54%, #18243c 100%);
+            color: var(--text-main) !important;
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .navbar {
+            background: rgba(12, 18, 34, 0.94) !important;
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.22);
+            padding-top: 0.55rem;
+            padding-bottom: 0.55rem;
+        }
+
+        .navbar-brand {
+            color: #ffffff !important;
+            font-weight: 850;
+            letter-spacing: -0.035em;
+            font-size: 1.08rem;
+            text-shadow: 0 1px 14px rgba(53, 181, 167, 0.22);
+        }
+
+        .navbar-nav .nav-link {
+            color: #e0f2fe !important;
+            font-weight: 700;
+            padding: 0.72rem 1.05rem !important;
+            border-radius: 14px;
+            transition: all 0.22s ease;
+            margin: 0 0.12rem;
+        }
+
+        .navbar-nav .nav-link:hover {
+            color: #ffffff !important;
+            background: rgba(53, 181, 167, 0.16) !important;
+            transform: translateY(-1px);
+        }
+
+        .navbar-nav .nav-link.active {
+            color: #ffffff !important;
+            background: linear-gradient(135deg, rgba(53, 181, 167, 0.28), rgba(75, 142, 184, 0.18)) !important;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14);
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #111827 0%, #0f172a 100%) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 1.05rem !important;
+        }
+
+        .app-section-title {
+            font-size: 0.98rem;
+            font-weight: 850;
+            color: #ffffff;
+            letter-spacing: -0.015em;
+            margin-bottom: 0.7rem;
+        }
+
+        hr {
+            border-color: rgba(148,163,184,0.24);
+            margin: 1.15rem 0;
+        }
+
+        .form-label {
+            color: #f8fafc !important;
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .form-control,
+        .form-select {
+            background: #0d1526 !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(148,163,184,0.42) !important;
+            border-radius: 12px !important;
+            box-shadow: none !important;
+            min-height: 42px;
+        }
+
+        .form-control::placeholder {
+            color: #cbd5e1 !important;
+            opacity: 0.8;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: rgba(53,181,167,0.9) !important;
+            box-shadow: 0 0 0 0.16rem rgba(53,181,167,0.18) !important;
+        }
+
+        .btn {
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            border-radius: 12px !important;
+            font-weight: 800 !important;
+            padding: 0.74rem 1rem !important;
+            transition: all 0.22s ease !important;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+            color: #ffffff !important;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.08);
+            box-shadow: 0 12px 26px rgba(0,0,0,0.36);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #53647c, #3b465a) !important;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #5ca77b, #3f8063) !important;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #35b5a7, #218b82) !important;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4b8eb8, #346e96) !important;
+        }
+
+        .card {
+            background: linear-gradient(180deg, var(--card-raised), var(--card)) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 16px !important;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: rgba(255,255,255,0.055) !important;
+            color: #ffffff !important;
+            border-bottom: 1px solid var(--border) !important;
+            font-weight: 850;
+            font-size: 0.98rem;
+            padding: 0.95rem 1rem !important;
+        }
+
+        .card-body {
+            color: #e0f2fe !important;
+            padding: 1rem !important;
+        }
+
+        .leaflet-container {
+            background: #020617 !important;
+            border-radius: 14px !important;
+            border: 1px solid rgba(148,163,184,0.28);
+        }
+
+        .map-count {
+            color: #b9fff4;
+            background: rgba(53, 181, 167, 0.15);
+            border: 1px solid rgba(53, 181, 167, 0.32);
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.24rem 0.62rem;
+            white-space: nowrap;
+        }
+
+        /* DataTables dark theme */
+        .dataTables_wrapper,
+        .dataTables_info,
+        .dataTables_length,
+        .dataTables_filter,
+        .dataTables_paginate {
+            color: #d7e3f4 !important;
+        }
+
+        .dataTables_wrapper input,
+        .dataTables_wrapper select {
+            background: #0b1220 !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(148,163,184,0.42) !important;
+            border-radius: 10px !important;
+        }
+
+        .table,
+        table.dataTable {
+            --bs-table-bg: #172033;
+            --bs-table-color: #eef4fb;
+            --bs-table-striped-bg: #1d293d;
+            --bs-table-striped-color: #eef4fb;
+            --bs-table-hover-bg: #24334a;
+            --bs-table-hover-color: #ffffff;
+            background-color: #172033 !important;
+            color: #f8fafc !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+        }
+
+        .table thead th,
+        table.dataTable thead th {
+            background-color: #223047 !important;
+            color: #ffffff !important;
+            border-bottom: 1px solid rgba(148,163,184,0.32) !important;
+            font-weight: 850;
+        }
+
+        .table tbody td,
+        table.dataTable tbody td {
+            color: #eef4fb !important;
+            border-top: 1px solid rgba(148,163,184,0.18) !important;
+        }
+
+        .table tbody tr:hover td,
+        table.dataTable tbody tr:hover td {
+            background-color: #24334a !important;
+            color: #ffffff !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            color: #d7e3f4 !important;
+            border-radius: 8px !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+            background: #2aa198 !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+
+        .form-check-input {
+            width: 1.05rem !important;
+            height: 1.05rem !important;
+            min-width: 1.05rem !important;
+            border: 2px solid #38bdf8 !important;
+            background-color: #020617 !important;
+            box-shadow: 0 0 0 2px rgba(56,189,248,0.12) !important;
+            cursor: pointer;
+        }
+
+        .form-check-input:checked {
+            background-color: #14b8a6 !important;
+            border-color: #14b8a6 !important;
+        }
+
+        .form-check-label {
+            color: #e0f2fe !important;
+            font-size: 0.78rem !important;
+            font-weight: 650 !important;
+        }
+
+        .value-box {
+            border-radius: 20px !important;
+            min-height: 98px !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            box-shadow: var(--shadow) !important;
+        }
+
+        .value-box-title {
+            font-size: 0.74rem !important;
+            font-weight: 850 !important;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+
+        .value-box-value {
+            font-size: 1.1rem !important;
+            line-height: 1.15 !important;
+            font-weight: 850 !important;
+            letter-spacing: -0.02em;
+        }
+
+        .theme-toggle {
+            min-height: 36px;
+            padding: 0.42rem 0.75rem !important;
+            border-radius: 999px !important;
+            box-shadow: none !important;
+        }
+
+        .page-hero {
+            background: #123f25;
+            color: #ffffff;
+            border-radius: 0 0 22px 22px;
+            margin: -1.5rem -0.75rem 1.6rem;
+            padding: 2.1rem 1.5rem;
+        }
+
+        .page-shell {
+            max-width: 1640px;
+            margin: 0 auto;
+        }
+
+        .page-hero h1 {
+            font-weight: 900;
+            letter-spacing: -0.035em;
+        }
+
+        .metric-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-top: 1rem;
+        }
+
+        .metric-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 0.42rem 0.75rem;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        body.light-theme {
+            --bg-main: #eef3f8;
+            --bg-soft: #f7fafc;
+            --panel: #ffffff;
+            --card: #ffffff;
+            --card-raised: #ffffff;
+            --border: rgba(71, 85, 105, 0.18);
+            --text-main: #172033;
+            --text-soft: #334155;
+            --text-muted: #64748b;
+            --shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+            background:
+                linear-gradient(180deg, #ffffff 0%, #ffffff 128px, #eef3f8 128px, #f7fafc 100%);
+            color: var(--text-main) !important;
+        }
+
+        body.light-theme .navbar {
+            background: #ffffff !important;
+            border-bottom-color: rgba(22, 101, 52, 0.16);
+            box-shadow: none;
+            padding-top: 0.9rem;
+            padding-bottom: 0.9rem;
+        }
+
+        body.light-theme .navbar-brand {
+            color: #166534 !important;
+            font-size: 1.35rem;
+            letter-spacing: -0.04em;
+            text-shadow: none;
+        }
+
+        body.light-theme .navbar .container-fluid {
+            max-width: 1640px;
+        }
+
+        body.light-theme .navbar-nav .nav-link {
+            color: #173f32 !important;
+            border-radius: 999px;
+            font-weight: 800;
+        }
+
+        body.light-theme .navbar-nav .nav-link:hover,
+        body.light-theme .navbar-nav .nav-link.active {
+            color: #14532d !important;
+            background: rgba(22, 101, 52, 0.10) !important;
+        }
+
+        body.light-theme .card,
+        body.light-theme .sidebar {
+            background: #ffffff !important;
+            color: #172033 !important;
+            border-color: rgba(71, 85, 105, 0.18) !important;
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.09);
+        }
+
+        body.light-theme .card-header {
+            background: #ffffff !important;
+            color: #173f32 !important;
+            border-bottom-color: rgba(22, 101, 52, 0.12) !important;
+        }
+
+        body.light-theme .card-body,
+        body.light-theme .form-label,
+        body.light-theme .app-section-title,
+        body.light-theme .value-box-title,
+        body.light-theme .value-box-value {
+            color: #172033 !important;
+        }
+
+        body.light-theme .form-control,
+        body.light-theme .form-select,
+        body.light-theme .dataTables_wrapper input,
+        body.light-theme .dataTables_wrapper select {
+            background: #ffffff !important;
+            color: #172033 !important;
+            border-color: #d8e3dc !important;
+        }
+
+        body.light-theme .form-control:focus,
+        body.light-theme .form-select:focus {
+            border-color: #166534 !important;
+            box-shadow: 0 0 0 0.16rem rgba(22, 101, 52, 0.12) !important;
+        }
+
+        body.light-theme .form-control::placeholder {
+            color: #64748b !important;
+        }
+
+        body.light-theme .table,
+        body.light-theme table.dataTable {
+            --bs-table-bg: #ffffff;
+            --bs-table-color: #172033;
+            --bs-table-striped-bg: #f1f5f9;
+            --bs-table-striped-color: #172033;
+            --bs-table-hover-bg: #e8f4f2;
+            --bs-table-hover-color: #0f172a;
+            background-color: #ffffff !important;
+            color: #172033 !important;
+            border-color: rgba(71, 85, 105, 0.18) !important;
+        }
+
+        body.light-theme .table thead th,
+        body.light-theme table.dataTable thead th {
+            background-color: #f3f7f4 !important;
+            color: #173f32 !important;
+        }
+
+        body.light-theme .table tbody td,
+        body.light-theme table.dataTable tbody td {
+            color: #172033 !important;
+        }
+
+        body.light-theme .dataTables_wrapper,
+        body.light-theme .dataTables_info,
+        body.light-theme .dataTables_length,
+        body.light-theme .dataTables_filter,
+        body.light-theme .dataTables_paginate {
+            color: #334155 !important;
+        }
+
+        body.light-theme .btn-primary,
+        body.light-theme .btn-success {
+            background: #166534 !important;
+            border-color: #166534 !important;
+        }
+
+        body.light-theme .btn-secondary {
+            background: #315442 !important;
+            border-color: #315442 !important;
+        }
+
+        body.light-theme .btn-info {
+            background: #4b8b6a !important;
+            border-color: #4b8b6a !important;
+        }
+
+        body.light-theme .btn-outline-secondary {
+            color: #166534 !important;
+            background: #ffffff !important;
+            border-color: #166534 !important;
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'location_intelligence:index' %}">
+                Nairobi Location Intelligence System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'map_explorer' %}active{% endif %}"
+                           href="{% url 'location_intelligence:map_explorer' %}">Map Explorer</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'place_results' %}active{% endif %}"
+                           href="{% url 'location_intelligence:place_results' %}">Place Results</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'business_insights' %}active{% endif %}"
+                           href="{% url 'location_intelligence:business_insights' %}">Business Insights</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'opportunity_analysis' %}active{% endif %}"
+                           href="{% url 'location_intelligence:opportunity_analysis' %}">Opportunities</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'community_needs' or request.resolver_match.url_name == 'data_science_insights' %}active{% endif %}"
+                           href="{% url 'location_intelligence:community_needs' %}">Community Needs</a>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <button type="button" class="btn btn-secondary theme-toggle" id="theme-toggle">Light</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    {% bootstrap_javascript %}
+
+    <!-- Leaflet JS -->
+    {% leaflet_js %}
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <script>
+        (function() {
+            const body = document.body;
+            const toggle = document.getElementById('theme-toggle');
+
+            function setTheme(theme) {
+                body.classList.toggle('light-theme', theme === 'light');
+                if (toggle) {
+                    toggle.textContent = theme === 'light' ? 'Dark' : 'Light';
+                }
+                localStorage.setItem('nli-theme', theme);
+            }
+
+            setTheme(localStorage.getItem('nli-theme') || 'light');
+
+            if (toggle) {
+                toggle.addEventListener('click', function() {
+                    setTheme(body.classList.contains('light-theme') ? 'dark' : 'light');
+                });
+            }
+        })();
+    </script>
+
+    <!-- Custom JS -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

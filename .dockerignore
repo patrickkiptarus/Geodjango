@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.py[cod]
+.git/
+.github/
+.vscode/
+db.sqlite3
+runserver.err.log
+runserver.out.log
+staticfiles/
+*.rds

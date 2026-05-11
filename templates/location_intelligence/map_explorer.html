@@ -1,0 +1,1267 @@
+{% extends 'base.html' %}
+{% load leaflet_tags %}
+{% load static %}
+
+{% block title %}Map Explorer - Nairobi Location Intelligence System{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        overflow: hidden;
+    }
+
+    .container-fluid.mt-4 {
+        height: calc(100vh - 58px);
+        margin-top: 0 !important;
+        padding: 0.7rem 0.85rem !important;
+        overflow: hidden;
+    }
+
+    .map-workspace {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 0.65rem;
+        height: 100%;
+        min-height: 0;
+    }
+
+    .control-panel {
+        position: relative;
+        z-index: 10;
+        background: linear-gradient(135deg, rgba(30, 43, 70, 0.92), rgba(18, 28, 48, 0.9));
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(166, 184, 214, 0.26);
+        border-radius: 18px;
+        box-shadow: 0 14px 30px rgba(3, 7, 18, 0.28);
+        padding: 0.64rem;
+    }
+
+    .map-stage {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 0.65rem;
+        min-height: 0;
+        transition: grid-template-columns 0.22s ease;
+    }
+
+    .map-workspace.drawer-closed .map-stage {
+        grid-template-columns: 0 minmax(0, 1fr);
+    }
+
+    .control-topline {
+        display: grid;
+        grid-template-columns: auto minmax(280px, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 0.58rem;
+    }
+
+    .filter-drawer-toggle {
+        min-width: 58px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(166, 184, 214, 0.34);
+        border-radius: 12px;
+        background: rgba(13, 21, 38, 0.7);
+        color: #f8fafc;
+        font-size: 0.78rem;
+        font-weight: 850;
+        line-height: 1;
+    }
+
+    .search-band {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) auto;
+        gap: 0.55rem;
+        align-items: center;
+    }
+
+    .search-band input {
+        min-height: 38px;
+    }
+
+    .quick-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.42rem;
+        justify-content: flex-end;
+    }
+
+    .quick-chip,
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-height: 30px;
+        padding: 0.25rem 0.62rem;
+        border: 1px solid rgba(166, 184, 214, 0.25);
+        border-radius: 999px;
+        background: rgba(13, 21, 38, 0.55);
+        color: #e0f2fe;
+        font-size: 0.78rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .quick-chip {
+        color: #f8fafc;
+        text-decoration: none;
+        transition: all 0.18s ease;
+    }
+
+    .quick-chip:hover,
+    .quick-chip.active {
+        border-color: rgba(53, 181, 167, 0.58);
+        background: linear-gradient(135deg, rgba(53, 181, 167, 0.28), rgba(215, 169, 87, 0.14));
+        color: #ffffff;
+    }
+
+    .status-pill strong {
+        color: #ffffff;
+        font-weight: 850;
+    }
+
+    .map-insight-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .map-insight-card {
+        background: rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 12px;
+        padding: 0.62rem 0.72rem;
+    }
+
+    .map-insight-card strong {
+        display: block;
+        color: #ffffff;
+        font-size: 0.95rem;
+        line-height: 1.1;
+    }
+
+    .map-insight-card span {
+        color: #cbd5e1;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .coverage-note {
+        background: rgba(37, 99, 235, 0.12);
+        border: 1px solid rgba(37, 99, 235, 0.22);
+        border-radius: 12px;
+        color: #dbeafe;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 0.65rem;
+        padding: 0.55rem 0.72rem;
+    }
+
+    .filter-drawer {
+        position: relative;
+        z-index: 5;
+        width: 100%;
+        min-width: 0;
+        max-height: 100%;
+        overflow: auto;
+        background: linear-gradient(180deg, rgba(30, 43, 70, 0.96), rgba(18, 28, 48, 0.96));
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(166, 184, 214, 0.26);
+        border-radius: 18px;
+        box-shadow: 0 16px 34px rgba(3, 7, 18, 0.34);
+        padding: 0.72rem;
+        transition: transform 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .filter-drawer.is-collapsed {
+        transform: translateX(-18px);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
+    .control-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .utility-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        margin-top: 0.55rem;
+    }
+
+    .map-workspace .form-label {
+        margin-bottom: 0.22rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .map-workspace .form-control,
+    .map-workspace .form-select {
+        min-height: 36px;
+        border-radius: 10px !important;
+        font-size: 0.88rem;
+    }
+
+    .map-workspace .btn {
+        min-height: 36px;
+        padding: 0.46rem 0.75rem !important;
+        border-radius: 10px !important;
+        white-space: nowrap;
+    }
+
+    .compact-check {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 36px;
+        padding: 0.34rem 0.6rem;
+        border: 1px solid rgba(166, 184, 214, 0.24);
+        border-radius: 10px;
+        background: rgba(13, 21, 38, 0.48);
+    }
+
+    .drawer-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        margin-top: 0.65rem;
+    }
+
+    .drawer-actions-full {
+        grid-column: 1 / -1;
+    }
+
+    .compact-check .form-check-input {
+        margin: 0;
+    }
+
+    .compact-check .form-check-label {
+        line-height: 1.05;
+        white-space: nowrap;
+    }
+
+    .map-card {
+        min-height: 0;
+        height: 100%;
+        border-radius: 16px !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .map-card .card-header {
+        position: relative;
+        z-index: 1;
+        min-height: 0;
+        padding: 0.5rem 0.7rem !important;
+        border: 1px solid rgba(148, 163, 184, 0.26) !important;
+        border-radius: 0 !important;
+        background: rgba(15, 23, 42, 0.88) !important;
+    }
+
+    .map-card .card-body {
+        flex: 1;
+        height: auto;
+        min-height: 0;
+        padding: 0 !important;
+    }
+
+    .map-limit-note {
+        background: rgba(214, 182, 92, 0.14);
+        border-bottom: 1px solid rgba(214, 182, 92, 0.28);
+        color: #f8fafc;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.38rem 0.7rem;
+    }
+
+    .map-card .leaflet-container,
+    .map-card .django-leaflet-raw-textarea {
+        height: 100% !important;
+        min-height: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .leaflet-control-layers {
+        background: rgba(247, 251, 255, 0.97) !important;
+        color: #f8fafc !important;
+        border: 1px solid rgba(71, 85, 105, 0.24) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22) !important;
+    }
+
+    .leaflet-control-layers-toggle {
+        background-color: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .leaflet-control-layers-expanded {
+        padding: 0.6rem 0.78rem !important;
+    }
+
+    .leaflet-control-layers label {
+        color: #1e293b;
+        font-size: 0.86rem;
+        font-weight: 650;
+        margin-bottom: 0.35rem;
+    }
+
+    .poi-pin {
+        position: relative;
+        width: 24px;
+        height: 24px;
+        transform: translate(-12px, -24px);
+    }
+
+    .poi-pin-core {
+        width: 23px;
+        height: 23px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        border: 1.5px solid rgba(255, 255, 255, 0.92);
+        border-radius: 50% 50% 50% 6px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.34);
+        transform: rotate(-45deg);
+    }
+
+    .poi-pin-core svg {
+        width: 13px;
+        height: 13px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2.2;
+        transform: rotate(45deg);
+    }
+
+    .poi-food { background: #d28a45; }
+    .poi-health { background: #d86969; }
+    .poi-education { background: #4f90be; }
+    .poi-transport { background: #74849c; }
+    .poi-shopping { background: #8c78c0; }
+    .poi-finance { background: #67a77a; }
+    .poi-religion { background: #98794f; }
+    .poi-accommodation { background: #7488bc; }
+    .poi-entertainment { background: #b0659b; }
+    .poi-government { background: #63879a; }
+    .poi-water { background: #48a0bb; }
+    .poi-other { background: #64748b; }
+
+    .route-summary {
+        margin-bottom: 0.75rem;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid rgba(42, 161, 152, 0.28);
+        border-radius: 12px;
+        background: rgba(42, 161, 152, 0.12);
+        color: #eef4fb;
+        font-size: 0.9rem;
+    }
+
+    .route-action {
+        padding: 0.32rem 0.56rem !important;
+        font-size: 0.78rem !important;
+        box-shadow: none !important;
+    }
+
+    body.light-theme .control-panel,
+    body.light-theme .filter-drawer {
+        background: #ffffff;
+        border-color: #d8e3dc;
+        color: #172033;
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.10);
+    }
+
+    body.light-theme .filter-drawer-toggle,
+    body.light-theme .compact-check,
+    body.light-theme .status-pill,
+    body.light-theme .quick-chip {
+        background: #f7faf8;
+        border-color: #d8e3dc;
+        color: #173f32;
+    }
+
+    body.light-theme .quick-chip:hover,
+    body.light-theme .quick-chip.active {
+        background: #166534;
+        border-color: #166534;
+        color: #ffffff;
+    }
+
+    body.light-theme .status-pill strong {
+        color: #0f172a;
+    }
+
+    body.light-theme .map-card .card-header {
+        background: #ffffff !important;
+        color: #173f32 !important;
+    }
+
+    body.light-theme .map-limit-note {
+        background: #fff7df;
+        border-bottom-color: #ead296;
+        color: #5b4616;
+    }
+
+    body.light-theme .map-insight-card {
+        background: #ffffff;
+        border-color: #d8e3dc;
+    }
+
+    body.light-theme .map-insight-card strong {
+        color: #173f32;
+    }
+
+    body.light-theme .map-insight-card span {
+        color: #64748b;
+    }
+
+    body.light-theme .coverage-note {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e3a8a;
+    }
+
+    body.light-theme .route-summary {
+        background: #eef8f1;
+        border-color: #b7d8c2;
+        color: #173f32;
+    }
+
+    body.light-theme .map-workspace {
+        background: #eef3f8;
+        border-radius: 18px;
+    }
+
+    body.light-theme .map-card {
+        border-color: #d8e3dc !important;
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.10);
+    }
+
+    body.light-theme .leaflet-control-layers {
+        border-color: #d8e3dc !important;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14) !important;
+    }
+
+    @media (max-width: 1180px) {
+        body {
+            overflow: auto;
+        }
+
+        .container-fluid.mt-4 {
+            height: auto;
+            min-height: calc(100vh - 58px);
+            overflow: visible;
+        }
+
+        .control-topline {
+            grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        .map-stage,
+        .map-workspace.drawer-closed .map-stage {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-chips {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+        }
+
+        .search-band,
+        .utility-grid,
+        .map-insight-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .status-strip,
+        .quick-chips {
+            justify-content: flex-start;
+        }
+
+        .map-card {
+            height: 68vh;
+            min-height: 520px;
+        }
+
+        .filter-drawer.is-collapsed {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-workspace">
+    <section class="control-panel">
+        <div class="control-topline">
+            <button type="button" class="filter-drawer-toggle" id="filter-drawer-toggle" aria-label="Toggle filters">Menu</button>
+            <div class="search-band">
+                <input type="text" class="form-control" id="top_search_name"
+                       placeholder="Search Nairobi places, wards, categories"
+                       value="{{ search_name }}">
+                <button type="submit" form="filter-form" class="btn btn-secondary">Search</button>
+            </div>
+            <div class="quick-chips">
+                <a class="quick-chip {% if selected_major_category == 'Food & Drink' %}active{% endif %}" href="#" data-major-category="Food & Drink">Food</a>
+                <a class="quick-chip {% if selected_major_category == 'Health' %}active{% endif %}" href="#" data-major-category="Health">Health</a>
+                <a class="quick-chip {% if selected_major_category == 'Education' %}active{% endif %}" href="#" data-major-category="Education">Education</a>
+                <a class="quick-chip {% if selected_major_category == 'Transport' %}active{% endif %}" href="#" data-major-category="Transport">Transport</a>
+                <a class="quick-chip {% if selected_major_category == 'Shopping' %}active{% endif %}" href="#" data-major-category="Shopping">Shopping</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="map-stage">
+    <aside class="filter-drawer" id="filter-drawer">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="app-section-title mb-0">Explore Filters</div>
+            <span class="status-pill">Places <strong>{{ total_pois }}</strong></span>
+        </div>
+        <div class="status-strip justify-content-start mb-2">
+            <span class="status-pill">Ward <strong>{{ selected_ward|default:"All" }}</strong></span>
+            <span class="status-pill">Top type <strong>{{ top_category }}</strong></span>
+        </div>
+        <form id="filter-form" method="get" action="{% url 'location_intelligence:map_explorer' %}">
+            {% csrf_token %}
+            <div class="control-grid">
+                <div>
+                    <label for="major_category" class="form-label">Broad place type</label>
+                    <select class="form-select" id="major_category" name="major_category">
+                        {% for category in major_categories %}
+                            <option value="{{ category }}" {% if category == selected_major_category %}selected{% endif %}>
+                                {{ category }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="category" class="form-label">Specific category</label>
+                    <select class="form-select" id="category" name="category">
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>
+                                {{ cat }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="ward" class="form-label">Ward</label>
+                    <select class="form-select" id="ward" name="ward">
+                        {% for ward in wards %}
+                            <option value="{{ ward }}" {% if ward == selected_ward %}selected{% endif %}>
+                                {{ ward }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="search_name" class="form-label">Place name</label>
+                    <input type="text" class="form-control" id="search_name" name="search_name"
+                           placeholder="e.g. Java, KCB" value="{{ search_name }}">
+                </div>
+
+                <div class="compact-check">
+                    <input type="hidden" name="use_clusters" value="false">
+                    <input class="form-check-input" type="checkbox" id="use_clusters" name="use_clusters"
+                           {% if use_clusters %}checked{% endif %}>
+                    <label class="form-check-label" for="use_clusters">Clusters</label>
+                </div>
+
+                <div>
+                    <label for="buffer_radius_m" class="form-label">Service buffer</label>
+                    <select class="form-select" id="buffer_radius_m" name="buffer_radius_m">
+                        <option value="250" {% if buffer_radius_m == 250 %}selected{% endif %}>250 m</option>
+                        <option value="500" {% if buffer_radius_m == 500 %}selected{% endif %}>500 m</option>
+                        <option value="750" {% if buffer_radius_m == 750 %}selected{% endif %}>750 m</option>
+                        <option value="1000" {% if buffer_radius_m == 1000 %}selected{% endif %}>1 km</option>
+                        <option value="1500" {% if buffer_radius_m == 1500 %}selected{% endif %}>1.5 km</option>
+                        <option value="3000" {% if buffer_radius_m == 3000 %}selected{% endif %}>3 km</option>
+                    </select>
+                </div>
+
+                <div class="compact-check">
+                    <input type="hidden" name="show_buffers" value="false">
+                    <input class="form-check-input" type="checkbox" id="show_buffers" name="show_buffers"
+                           {% if show_buffers %}checked{% endif %}>
+                    <label class="form-check-label" for="show_buffers">Show buffers</label>
+                </div>
+            </div>
+
+            <div class="utility-grid">
+                <div>
+                    <label for="user_lat" class="form-label">Latitude</label>
+                    <input type="number" class="form-control" id="user_lat" name="user_lat" step="0.0001" value="-1.286389">
+                </div>
+                <div>
+                    <label for="user_lon" class="form-label">Longitude</label>
+                    <input type="number" class="form-control" id="user_lon" name="user_lon" step="0.0001" value="36.817223">
+                </div>
+                <div>
+                    <label for="k" class="form-label">Nearest</label>
+                    <input type="number" class="form-control" id="k" name="k" min="1" max="20" value="5">
+                </div>
+                <button type="button" class="btn btn-success drawer-actions-full" id="use-my-location">Use Location</button>
+                <div>
+                    <label for="nl_query" class="form-label">Smart search</label>
+                    <input type="text" class="form-control" id="nl_query" name="nl_query"
+                           placeholder="churches in Kileleshwa near me">
+                </div>
+                <div class="d-flex gap-2 drawer-actions-full">
+                    <button type="button" class="btn btn-primary" id="find-nearest">Nearest</button>
+                    <button type="button" class="btn btn-info" id="run-nl-query">Search</button>
+                </div>
+            </div>
+            <div class="drawer-actions">
+                <button type="submit" class="btn btn-secondary">Apply Filters</button>
+                <a href="{% url 'location_intelligence:map_explorer' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </aside>
+
+    <div class="card map-card">
+        <div class="map-insight-grid">
+            <div class="map-insight-card">
+                <span>Service layer</span>
+                <strong>{{ buffer_insights.service_label }}</strong>
+            </div>
+            <div class="map-insight-card">
+                <span>Analysis area</span>
+                <strong>{{ buffer_insights.place_scope }}</strong>
+            </div>
+            <div class="map-insight-card">
+                <span>Buffer radius</span>
+                <strong>{{ buffer_insights.radius_km }} km</strong>
+            </div>
+            <div class="map-insight-card">
+                <span>Coverage status</span>
+                <strong>{{ buffer_insights.status }}</strong>
+            </div>
+        </div>
+        <div class="coverage-note">
+            {{ buffer_insights.message }} Click anywhere on the map to set an analysis point and find the nearest matching service.
+        </div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>{{ selected_ward|default:"Nairobi" }}</span>
+            <span class="map-count">{{ visible_pois }} of {{ total_pois }} places on map</span>
+        </div>
+        {% if visible_pois < total_pois %}
+            <div class="map-limit-note">
+                Showing the first {{ visible_pois }} matching places for performance. Use search, category, or ward filters to reveal specific POIs.
+            </div>
+        {% endif %}
+        <div class="card-body">
+            {% leaflet_map "main" callback="main_map_init" %}
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Nearest Places Modal -->
+<div class="modal fade" id="nearestModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nearest Places</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="nearest-results"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ category_groups|json_script:"category-groups-data" }}
+<script>
+let mainMap;
+let poiLayer;
+let wardLayer;
+let userMarker;
+let selectedWardLayer;
+let routeLayer;
+let routeDestinationMarker;
+let nairobiBoundaryBounds;
+let coverageLayer;
+const nairobiBoundaryUrl = "{% static 'data/nairobi_county_boundary.geojson' %}";
+const showBuffers = {% if show_buffers %}true{% else %}false{% endif %};
+const bufferRadiusMeters = {{ buffer_radius_m }};
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function poiStyleFor(majorCategory) {
+    const styles = {
+        'Food & Drink': ['poi-food', 'food'],
+        'Health': ['poi-health', 'health'],
+        'Education': ['poi-education', 'education'],
+        'Transport': ['poi-transport', 'transport'],
+        'Shopping': ['poi-shopping', 'shopping'],
+        'Finance': ['poi-finance', 'finance'],
+        'Religion': ['poi-religion', 'religion'],
+        'Accommodation': ['poi-accommodation', 'accommodation'],
+        'Entertainment': ['poi-entertainment', 'entertainment'],
+        'Government': ['poi-government', 'government'],
+        'Water & Sanitation': ['poi-water', 'water']
+    };
+    return styles[majorCategory] || ['poi-other', 'place'];
+}
+
+function poiSvg(iconName) {
+    const icons = {
+        food: '<path d="M7 2v9"></path><path d="M4 2v4a3 3 0 0 0 6 0V2"></path><path d="M15 2v18"></path><path d="M15 2c3 2 3 7 0 9"></path>',
+        health: '<path d="M12 3v18"></path><path d="M3 12h18"></path>',
+        education: '<path d="M2 8l10-5 10 5-10 5-10-5z"></path><path d="M6 10v5c3 2 9 2 12 0v-5"></path>',
+        transport: '<rect x="5" y="3" width="14" height="14" rx="3"></rect><path d="M8 17l-1.5 3"></path><path d="M17.5 20L16 17"></path><path d="M8 8h8"></path><path d="M8 13h.01"></path><path d="M16 13h.01"></path>',
+        shopping: '<path d="M6 8h12l-1 12H7L6 8z"></path><path d="M9 8a3 3 0 0 1 6 0"></path>',
+        finance: '<path d="M3 9l9-6 9 6"></path><path d="M5 10h14"></path><path d="M7 10v8"></path><path d="M12 10v8"></path><path d="M17 10v8"></path><path d="M4 18h16"></path>',
+        religion: '<path d="M12 2v7"></path><path d="M8 6h8"></path><path d="M6 21v-8a6 6 0 0 1 12 0v8"></path>',
+        accommodation: '<path d="M3 11h18v8"></path><path d="M3 19V7"></path><path d="M7 11V8h5a3 3 0 0 1 3 3"></path>',
+        entertainment: '<path d="M4 7h16v10H4z"></path><path d="M8 7v10"></path><path d="M16 7v10"></path><path d="M4 11h4"></path><path d="M16 11h4"></path>',
+        government: '<path d="M12 3l8 4v2H4V7l8-4z"></path><path d="M6 10v8"></path><path d="M10 10v8"></path><path d="M14 10v8"></path><path d="M18 10v8"></path><path d="M4 18h16"></path>',
+        water: '<path d="M12 2s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12z"></path>',
+        place: '<path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12z"></path><circle cx="12" cy="9" r="2"></circle>'
+    };
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (icons[iconName] || icons.place) + '</svg>';
+}
+
+function createPoiIcon(majorCategory) {
+    const style = poiStyleFor(majorCategory);
+    return L.divIcon({
+        className: 'poi-div-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -22],
+        html: '<div class="poi-pin"><div class="poi-pin-core ' + style[0] + '">' +
+              poiSvg(style[1]) + '</div></div>'
+    });
+}
+
+function applyNairobiBoundary(map) {
+    return fetch(nairobiBoundaryUrl)
+        .then(response => response.json())
+        .then(boundary => {
+            const boundaryLayer = L.geoJSON(boundary, {
+                interactive: false,
+                style: {
+                    color: '#166534',
+                    weight: 3,
+                    opacity: 0.95,
+                    fillColor: '#166534',
+                    fillOpacity: 0.035
+                }
+            }).addTo(map);
+            const bounds = boundaryLayer.getBounds();
+            if (bounds.isValid()) {
+                const paddedBounds = bounds.pad(0.36);
+                nairobiBoundaryBounds = bounds;
+                map.setMaxBounds(paddedBounds);
+                map.options.maxBoundsViscosity = 0.92;
+                map.setMinZoom(map.getBoundsZoom(paddedBounds, true));
+            }
+            return boundaryLayer;
+        })
+        .catch(error => {
+            console.error('Could not load Nairobi County boundary', error);
+            return null;
+        });
+}
+
+function fitMapToActiveArea(map) {
+    if (selectedWardLayer) {
+        map.fitBounds(selectedWardLayer.getBounds(), {
+            padding: [34, 34],
+            maxZoom: 15
+        });
+    } else if (nairobiBoundaryBounds && nairobiBoundaryBounds.isValid()) {
+        map.fitBounds(nairobiBoundaryBounds, {
+            padding: [38, 38]
+        });
+    }
+}
+
+function main_map_init(map, options) {
+    mainMap = map;
+    const boundaryReady = applyNairobiBoundary(map);
+
+    const baseMaps = {
+        'Dark Matter': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }),
+        'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }),
+        'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19
+        }),
+        'Hybrid': L.layerGroup([
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 19
+            }),
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            })
+        ])
+    };
+
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+        }
+    });
+    baseMaps['Dark Matter'].addTo(map);
+    L.control.layers(baseMaps, null, {
+        position: 'bottomleft',
+        collapsed: true
+    }).addTo(map);
+
+    // Add ward boundaries if not filtering by specific ward
+    {% if all_wards %}
+        const wardDefaultStyle = {
+            color: '#315a48',
+            weight: 0.85,
+            opacity: 0.5,
+            fillColor: '#166534',
+            fillOpacity: 0.025
+        };
+        wardLayer = L.featureGroup().addTo(map);
+        {% for ward in all_wards %}
+            L.geoJSON({{ ward.geometry.json|safe }}, {
+                style: wardDefaultStyle,
+                onEachFeature: function(feature, layer) {
+                    layer.bindPopup('{{ ward.name }}');
+                    layer.on({
+                        mouseover: function(event) {
+                            event.target.setStyle({
+                                color: '#0ea5e9',
+                                weight: 2.4,
+                                opacity: 0.95,
+                                fillOpacity: 0.08
+                            });
+                            event.target.bringToFront();
+                        },
+                        mouseout: function(event) {
+                            event.target.setStyle(wardDefaultStyle);
+                        },
+                        popupclose: function(event) {
+                            event.target.setStyle(wardDefaultStyle);
+                        }
+                    });
+                }
+            }).addTo(wardLayer);
+        {% endfor %}
+    {% endif %}
+
+    // Add selected ward boundary if filtering
+    {% if selected_ward_geom %}
+        selectedWardLayer = L.geoJSON({{ selected_ward_geom.json|safe }}, {
+            style: {
+                color: '#0ea5e9',
+                weight: 4,
+                opacity: 0.96,
+                fillColor: '#0f766e',
+                fillOpacity: 0.2
+            }
+        }).addTo(map);
+    {% endif %}
+
+    // Add POI markers
+    {% if use_clusters %}
+        if (L.markerClusterGroup) {
+            poiLayer = L.markerClusterGroup({
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true
+            }).addTo(map);
+        } else {
+            poiLayer = L.featureGroup().addTo(map);
+        }
+    {% else %}
+        poiLayer = L.featureGroup().addTo(map);
+    {% endif %}
+
+    coverageLayer = L.featureGroup().addTo(map);
+    {% for poi in pois %}
+        L.marker([{{ poi.lat }}, {{ poi.lon }}], {
+            icon: createPoiIcon('{{ poi.major_category|escapejs }}'),
+            title: '{{ poi.name|escapejs }}',
+            keyboard: false
+        }).addTo(poiLayer).bindPopup(
+            '<b>{{ poi.name|escapejs }}</b><br/>' +
+            'Ward: {{ poi.ward_name|escapejs }}<br/>' +
+            'Broad type: {{ poi.major_category|escapejs }}<br/>' +
+            'Specific type: {{ poi.category|escapejs }}<br/>' +
+            'Source: {% if poi.data_source == "osm" %}OpenStreetMap{% else %}Local fallback{% endif %}'
+        );
+        {% if show_buffers %}
+            L.circle([{{ poi.lat }}, {{ poi.lon }}], {
+                radius: bufferRadiusMeters,
+                color: '#2563eb',
+                weight: 1,
+                opacity: 0.28,
+                fillColor: '#60a5fa',
+                fillOpacity: 0.08,
+                interactive: false
+            }).addTo(coverageLayer);
+        {% endif %}
+    {% endfor %}
+
+    // Add user location marker
+    userMarker = L.marker([parseFloat(document.getElementById('user_lat').value),
+                           parseFloat(document.getElementById('user_lon').value)], {
+        icon: L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        })
+    }).addTo(map).bindPopup('Search location');
+
+    map.on('click', function(event) {
+        setAnalysisPoint(event.latlng.lat, event.latlng.lng, true);
+    });
+
+    boundaryReady.finally(function() {
+        map.invalidateSize();
+        fitMapToActiveArea(map);
+    });
+}
+
+const categoryGroups = JSON.parse(document.getElementById('category-groups-data').textContent);
+const majorSelect = document.getElementById('major_category');
+const categorySelect = document.getElementById('category');
+const selectedCategory = '{{ selected_category|escapejs }}';
+const drawer = document.getElementById('filter-drawer');
+const drawerToggle = document.getElementById('filter-drawer-toggle');
+const workspace = document.querySelector('.map-workspace');
+const topSearch = document.getElementById('top_search_name');
+const formSearch = document.getElementById('search_name');
+const filterForm = document.getElementById('filter-form');
+const autoFilterFields = filterForm.querySelectorAll('select, input[type="checkbox"]');
+let searchTimer;
+
+function updateCategoryOptions() {
+    const major = majorSelect.value;
+    const categories = major === 'All'
+        ? Object.values(categoryGroups).flat()
+        : (categoryGroups[major] || []);
+    const currentValue = categorySelect.value || selectedCategory;
+
+    categorySelect.innerHTML = '';
+    const allOption = new Option('All', 'All');
+    categorySelect.add(allOption);
+
+    categories.forEach(function(category) {
+        categorySelect.add(new Option(category, category));
+    });
+
+    categorySelect.value = categories.includes(currentValue) ? currentValue : 'All';
+}
+
+majorSelect.addEventListener('change', updateCategoryOptions);
+updateCategoryOptions();
+
+if (localStorage.getItem('nli-filter-drawer') === 'closed') {
+    drawer.classList.add('is-collapsed');
+    workspace.classList.add('drawer-closed');
+}
+
+drawerToggle.addEventListener('click', function() {
+    drawer.classList.toggle('is-collapsed');
+    workspace.classList.toggle('drawer-closed');
+    localStorage.setItem(
+        'nli-filter-drawer',
+        drawer.classList.contains('is-collapsed') ? 'closed' : 'open'
+    );
+    setTimeout(function() {
+        if (mainMap) {
+            mainMap.invalidateSize();
+            fitMapToActiveArea(mainMap);
+        }
+    }, 260);
+});
+
+filterForm.addEventListener('submit', function() {
+    formSearch.value = topSearch.value || formSearch.value;
+});
+
+function submitFilters() {
+    formSearch.value = topSearch.value || formSearch.value;
+    filterForm.requestSubmit();
+}
+
+autoFilterFields.forEach(function(field) {
+    field.addEventListener('change', function() {
+        if (field === majorSelect) {
+            updateCategoryOptions();
+        }
+        submitFilters();
+    });
+});
+
+topSearch.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        submitFilters();
+    }
+});
+
+topSearch.addEventListener('input', function() {
+    formSearch.value = topSearch.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(submitFilters, 650);
+});
+
+formSearch.addEventListener('input', function() {
+    topSearch.value = formSearch.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(submitFilters, 650);
+});
+
+document.querySelectorAll('.quick-chip[data-major-category]').forEach(function(chip) {
+    chip.addEventListener('click', function(event) {
+        event.preventDefault();
+        majorSelect.value = chip.dataset.majorCategory;
+        updateCategoryOptions();
+        categorySelect.value = 'All';
+        submitFilters();
+    });
+});
+
+// Update user location
+function setAnalysisPoint(lat, lon, runNearestAfterSet) {
+    const latValue = Number(lat).toFixed(6);
+    const lonValue = Number(lon).toFixed(6);
+    document.getElementById('user_lat').value = latValue;
+    document.getElementById('user_lon').value = lonValue;
+
+    if (userMarker) {
+        userMarker.setLatLng([lat, lon]).bindPopup(
+            'Analysis point<br/>' + latValue + ', ' + lonValue
+        ).openPopup();
+    }
+
+    if (runNearestAfterSet) {
+        runNearestAnalysis();
+    }
+}
+
+document.getElementById('use-my-location').addEventListener('click', function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            setAnalysisPoint(position.coords.latitude, position.coords.longitude, true);
+        }, function(error) {
+            alert('Location access denied. Please enter coordinates manually.');
+        });
+    } else {
+        alert('Geolocation is not supported by this browser.');
+    }
+});
+
+// Find nearest places
+function runNearestAnalysis() {
+    const formData = new FormData(document.getElementById('filter-form'));
+    formData.append('lat', document.getElementById('user_lat').value);
+    formData.append('lon', document.getElementById('user_lon').value);
+    formData.append('k', document.getElementById('k').value);
+
+    fetch('{% url "location_intelligence:find_nearest" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = '<div id="route-summary" class="route-summary" style="display:none;"></div>';
+            html += '<div class="mb-3"><strong>Search location:</strong> ' +
+                      escapeHtml(data.user_location.lat) + ', ' + escapeHtml(data.user_location.lon) + '</div>';
+            html += '<table class="table table-dark"><thead><tr>' +
+                   '<th>Name</th><th>Category</th><th>Ward</th><th>Distance</th><th></th>' +
+                   '</tr></thead><tbody>';
+
+            data.nearest_places.forEach((place, index) => {
+                html += '<tr>' +
+                       '<td>' + escapeHtml(place.name) + '</td>' +
+                       '<td>' + escapeHtml(place.category) + '</td>' +
+                       '<td>' + escapeHtml(place.ward_name) + '</td>' +
+                       '<td>' + escapeHtml(place.distance) + ' km</td>' +
+                       '<td><button type="button" class="btn btn-primary route-action" ' +
+                       'data-place-index="' + index + '">Directions</button></td>' +
+                       '</tr>';
+            });
+            html += '</tbody></table>';
+
+            document.getElementById('nearest-results').innerHTML = html;
+            window.nearestPlaces = data.nearest_places;
+            window.nearestSearchLocation = data.user_location;
+            new bootstrap.Modal(document.getElementById('nearestModal')).show();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error finding nearest places');
+        console.error(error);
+    });
+}
+
+document.getElementById('find-nearest').addEventListener('click', function() {
+    runNearestAnalysis();
+});
+
+document.getElementById('nearest-results').addEventListener('click', function(event) {
+    const button = event.target.closest('.route-action');
+    if (!button) {
+        return;
+    }
+
+    const place = window.nearestPlaces[parseInt(button.dataset.placeIndex, 10)];
+    if (place) {
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('nearestModal'));
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        showRouteToPlace(place);
+    }
+});
+
+async function showRouteToPlace(place) {
+    const startLat = parseFloat(document.getElementById('user_lat').value);
+    const startLon = parseFloat(document.getElementById('user_lon').value);
+    const endLat = parseFloat(place.lat);
+    const endLon = parseFloat(place.lon);
+    const summary = document.getElementById('route-summary');
+
+    if (routeLayer) {
+        mainMap.removeLayer(routeLayer);
+    }
+    if (routeDestinationMarker) {
+        mainMap.removeLayer(routeDestinationMarker);
+    }
+
+    summary.style.display = 'block';
+    summary.innerHTML = 'Finding route to <strong>' + escapeHtml(place.name) + '</strong>...';
+
+    try {
+        const url = 'https://router.project-osrm.org/route/v1/driving/' +
+            startLon + ',' + startLat + ';' + endLon + ',' + endLat +
+            '?overview=full&geometries=geojson';
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Route request failed');
+        }
+        const data = await response.json();
+        const route = data.routes && data.routes[0];
+        if (!route) {
+            throw new Error('No route found');
+        }
+
+        routeLayer = L.geoJSON(route.geometry, {
+            style: {
+                color: '#2563eb',
+                weight: 6,
+                opacity: 0.95
+            }
+        }).addTo(mainMap);
+        routeDestinationMarker = L.marker([endLat, endLon], {
+            icon: createPoiIcon(place.major_category),
+            title: place.name
+        }).addTo(mainMap).bindPopup(
+            '<b>' + escapeHtml(place.name) + '</b><br/>' +
+            'Route destination<br/>' +
+            escapeHtml(place.ward_name)
+        );
+
+        const distanceKm = (route.distance / 1000).toFixed(2);
+        const durationMin = Math.round(route.duration / 60);
+        summary.innerHTML = '<strong>' + escapeHtml(place.name) + '</strong><br/>' +
+            distanceKm + ' km by road, about ' + durationMin + ' min driving';
+        mainMap.fitBounds(routeLayer.getBounds(), {padding: [48, 48]});
+    } catch (error) {
+        routeLayer = L.polyline([[startLat, startLon], [endLat, endLon]], {
+            color: '#2563eb',
+            weight: 5,
+            opacity: 0.9,
+            dashArray: '8 8'
+        }).addTo(mainMap);
+        routeDestinationMarker = L.marker([endLat, endLon], {
+            icon: createPoiIcon(place.major_category),
+            title: place.name
+        }).addTo(mainMap);
+        summary.innerHTML = '<strong>' + escapeHtml(place.name) + '</strong><br/>' +
+            'Road route unavailable, showing direct line. Approx. ' +
+            escapeHtml(place.distance) + ' km away.';
+        mainMap.fitBounds(routeLayer.getBounds(), {padding: [48, 48]});
+    }
+}
+
+// Smart search
+document.getElementById('run-nl-query').addEventListener('click', function() {
+    const query = document.getElementById('nl_query').value;
+
+    fetch('{% url "location_intelligence:parse_query" %}', {
+        method: 'POST',
+        body: JSON.stringify({query: query}),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Update form fields
+        if (data.major_category) {
+            document.getElementById('major_category').value = data.major_category;
+        }
+        if (data.category) {
+            document.getElementById('category').value = data.category;
+        }
+        if (data.ward) {
+            document.getElementById('ward').value = data.ward;
+        }
+
+        // Submit form
+        document.getElementById('filter-form').submit();
+    })
+    .catch(error => {
+        alert('Error parsing query');
+        console.error(error);
+    });
+});
+</script>
+{% endblock %}
