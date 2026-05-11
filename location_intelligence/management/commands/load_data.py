@@ -67,17 +67,16 @@ class Command(BaseCommand):
 
         # Load POI data
         self.stdout.write('Loading POI data...')
-        poi_path = os.path.join(data_dir, 'poi_nairobi.rds')
-        if not os.path.exists(poi_path):
-            self.stderr.write(f'POI data file not found: {poi_path}')
-            return
-
-        # For now, we'll assume the data is available as CSV or we need to convert
-        # Since we can't read RDS directly, let's check if there's a CSV version
         poi_csv_path = os.path.join(data_dir, 'poi_nairobi.csv')
         if os.path.exists(poi_csv_path):
+            self.stdout.write(f'Reading POI CSV: {poi_csv_path}')
             poi_df = pd.read_csv(poi_csv_path)
         else:
+            poi_path = os.path.join(data_dir, 'poi_nairobi.rds')
+            if not os.path.exists(poi_path):
+                self.stderr.write(f'POI CSV file not found: {poi_csv_path}')
+                self.stderr.write(f'POI RDS file not found: {poi_path}')
+                return
             self.stderr.write('POI data must be converted to CSV format first')
             self.stderr.write('Run the prepare_data.R script to generate poi_nairobi.rds, then convert to CSV')
             return
