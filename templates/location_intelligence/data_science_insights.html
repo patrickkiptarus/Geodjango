@@ -135,9 +135,9 @@
         </div>
         <div class="card">
             <div class="card-body">
-                <div class="needs-number">{{ avg_gap }}</div>
-                <strong>Average Service Gap</strong>
-                <div class="mt-2 text-muted">Mean nearest-service distance in km</div>
+                <div class="needs-number">{{ strongest_need.need_score|default:"0" }}%</div>
+                <strong>Priority Signal</strong>
+                <div class="mt-2 text-muted">Relative need score across wards</div>
             </div>
         </div>
         <div class="card">
@@ -169,11 +169,9 @@
                             <tr>
                                 <th>Ward</th>
                                 <th>Need</th>
-                                <th>Main Gap</th>
-                                <th>Health</th>
-                                <th>Education</th>
-                                <th>Finance</th>
+                                <th>Priority Area</th>
                                 <th>Recommendation</th>
+                                <th>Map Filter</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -185,13 +183,13 @@
                                     <small>{{ item.need_score }}%</small>
                                 </td>
                                 <td>{{ item.main_gap }}</td>
-                                <td>{{ item.health_km|default:"-" }} km</td>
-                                <td>{{ item.education_km|default:"-" }} km</td>
-                                <td>{{ item.finance_km|default:"-" }} km</td>
                                 <td>{{ item.recommendation }}</td>
+                                <td>
+                                    <a class="needs-pill" href="{% url 'location_intelligence:map_explorer' %}?ward={{ item.ward|urlencode }}&major_category=All&category=All">Open map</a>
+                                </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="7">No service gap records found.</td></tr>
+                            <tr><td colspan="5">No service need records found.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -223,10 +221,10 @@
 
                     <strong>Services that need attention</strong>
                     <div class="action-list mt-2 mb-3">
-                        {% for service in ward_report.missing_services %}
+                        {% for service in ward_report.attention_services %}
                         <div class="action-item">
                             <strong>{{ service.service }}</strong>
-                            <div>Nearest mapped service is {{ service.distance|default:"unknown" }} km from the ward centre.</div>
+                            <div>Prioritize field validation and compare mapped coverage with local demand.</div>
                         </div>
                         {% endfor %}
                     </div>

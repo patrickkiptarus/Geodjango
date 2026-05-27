@@ -7,6 +7,7 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.management.base import BaseCommand, CommandError
 
+from location_intelligence.categories import MAJOR_CATEGORY_MAP
 from location_intelligence.models import PointOfInterest, Ward
 
 
@@ -64,49 +65,6 @@ OSM_TAGS = [
     ('sport', None),
     ('place', None),
 ]
-
-MAJOR_CATEGORY_MAP = {
-    'restaurant': 'Food & Drink',
-    'cafe': 'Food & Drink',
-    'bar': 'Food & Drink',
-    'pub': 'Food & Drink',
-    'fast_food': 'Food & Drink',
-    'clinic': 'Health',
-    'hospital': 'Health',
-    'pharmacy': 'Health',
-    'doctors': 'Health',
-    'dentist': 'Health',
-    'school': 'Education',
-    'college': 'Education',
-    'university': 'Education',
-    'kindergarten': 'Education',
-    'library': 'Education',
-    'bank': 'Finance',
-    'atm': 'Finance',
-    'fuel': 'Transport',
-    'bus_station': 'Transport',
-    'parking': 'Transport',
-    'taxi': 'Transport',
-    'mall': 'Shopping',
-    'retail': 'Shopping',
-    'commercial': 'Shopping',
-    'place_of_worship': 'Religion',
-    'police': 'Government',
-    'fire_station': 'Government',
-    'courthouse': 'Government',
-    'townhall': 'Government',
-    'drinking_water': 'Water & Sanitation',
-    'water_point': 'Water & Sanitation',
-    'hotel': 'Accommodation',
-    'guest_house': 'Accommodation',
-    'hostel': 'Accommodation',
-    'motel': 'Accommodation',
-    'museum': 'Entertainment',
-    'attraction': 'Entertainment',
-    'park': 'Entertainment',
-    'sports_centre': 'Entertainment',
-}
-
 
 @lru_cache(maxsize=1)
 def nairobi_boundary_geom():

@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 from django.core.management.base import BaseCommand
 from django.contrib.gis.geos import GEOSGeometry, Point, MultiPolygon
+from location_intelligence.categories import major_category_for
 from location_intelligence.models import Ward, PointOfInterest
 
 
@@ -107,7 +108,7 @@ class Command(BaseCommand):
                 ward=ward,
                 location=point,
                 defaults={
-                    'major_category': str(row['major_category']),
+                    'major_category': major_category_for(row['category'], str(row['major_category'])),
                     'ward_name': ward_name,
                     'ward_key': ward.name_key,
                     'lat': float(row['lat']),

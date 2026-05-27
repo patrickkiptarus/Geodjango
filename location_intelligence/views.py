@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import Distance
@@ -67,33 +68,6 @@ def _filtered_pois(major_category=None, category=None, ward=None, search_name=No
     )
     queryset = _clip_to_nairobi(queryset)
     return _apply_selected_ward_geometry(queryset, ward)
-
-
-def _map_buffer_insights(total_pois, visible_pois, service_label, ward_filter, buffer_radius_m, show_buffers):
-    radius_km = buffer_radius_m / 1000
-    estimated_area = visible_pois * math.pi * (radius_km ** 2)
-    if total_pois == 0:
-        message = 'No matching services were found. This may indicate an underserved area or missing map data.'
-        status = 'Needs field check'
-    elif total_pois <= 3:
-        message = 'Very few matching services were found. Check surrounding wards or validate whether local services are unmapped.'
-        status = 'Likely underserved'
-    elif total_pois <= 10:
-        message = 'Some services exist, but coverage may still be uneven. Use the buffers to inspect uncovered pockets.'
-        status = 'Moderate coverage'
-    else:
-        message = 'Many services are mapped. Use buffers and nearest analysis to inspect local access gaps.'
-        status = 'Mapped coverage'
-
-    area_label = f'{estimated_area:.1f} sq km' if show_buffers else 'Buffers off'
-    return {
-        'service_label': service_label,
-        'place_scope': ward_filter if ward_filter != 'All' else 'Nairobi',
-        'radius_km': round(radius_km, 2),
-        'estimated_area': area_label,
-        'status': status,
-        'message': message,
-    }
 
 
 OPPORTUNITY_PROFILES = {
@@ -194,9 +168,14 @@ def map_explorer(request):
     ward_filter = request.GET.get('ward', 'All')
     search_name = request.GET.get('search_name', '')
     use_clusters = request.GET.get('use_clusters', 'on') in ('on', 'true', '1')
+    show_hotspots_value = request.GET.get('show_hotspots')
+    if show_hotspots_value is None:
+        show_hotspots = major_category != 'All' or category != 'All'
+    else:
+        show_hotspots = show_hotspots_value in ('on', 'true', '1')
     show_buffers_value = request.GET.get('show_buffers')
     if show_buffers_value is None:
-        show_buffers = major_category != 'All' or category != 'All' or ward_filter != 'All'
+        show_buffers = False
     else:
         show_buffers = show_buffers_value in ('on', 'true', '1')
     try:
@@ -207,7 +186,7 @@ def map_explorer(request):
 
     # Apply filters. Ward filtering uses the actual ward polygon so POIs are
     # shown by location even if an imported ward label was imperfect.
-    pois, selected_ward_geom = _filtered_pois(
+    pois, _ = _filtered_pois(
         major_category=major_category,
         category=category,
         ward=ward_filter,
@@ -223,19 +202,6 @@ def map_explorer(request):
     else:
         top_category = 'No data'
 
-    map_pois = list(pois[:MAP_POI_LIMIT])
-    service_label = category if category != 'All' else major_category
-    if service_label == 'All':
-        service_label = 'all selected services'
-    buffer_insights = _map_buffer_insights(
-        total_pois=total_pois,
-        visible_pois=len(map_pois),
-        service_label=service_label,
-        ward_filter=ward_filter,
-        buffer_radius_m=buffer_radius_m,
-        show_buffers=show_buffers,
-    )
-
     context = {
         'major_categories': major_categories,
         'categories': categories,
@@ -246,19 +212,116 @@ def map_explorer(request):
         'selected_ward': ward_filter,
         'search_name': search_name,
         'use_clusters': use_clusters,
+        'show_hotspots': show_hotspots,
         'show_buffers': show_buffers,
         'buffer_radius_m': buffer_radius_m,
-        'buffer_insights': buffer_insights,
         'total_pois': total_pois,
         'top_category': top_category,
-        'selected_ward_geom': selected_ward_geom,
-        'pois': map_pois,
-        'visible_pois': len(map_pois),
+        'visible_pois': min(total_pois, MAP_POI_LIMIT),
         'map_poi_limit': MAP_POI_LIMIT,
-        'all_wards': ward_queryset if ward_filter == 'All' else [],
     }
 
     return render(request, 'location_intelligence/map_explorer.html', context)
+
+
+@require_GET
+def map_pois(request):
+    """Return filtered POIs for the interactive map."""
+    major_category = request.GET.get('major_category', 'All')
+    category = request.GET.get('category', 'All')
+    ward_filter = request.GET.get('ward', 'All')
+    search_name = request.GET.get('search_name', '')
+
+    pois, _ = _filtered_pois(
+        major_category=major_category,
+        category=category,
+        ward=ward_filter,
+        search_name=search_name
+    )
+    total_pois = pois.count()
+    rows = list(
+        pois.order_by('id')
+        .values('id', 'name', 'ward_name', 'major_category', 'category', 'data_source', 'lat', 'lon')[:MAP_POI_LIMIT]
+    )
+
+    return JsonResponse({
+        'pois': rows,
+        'total': total_pois,
+        'visible': len(rows),
+        'limit': MAP_POI_LIMIT,
+        'limited': total_pois > len(rows),
+    })
+
+
+@require_GET
+def map_boundaries(request):
+    """Return ward boundary overlays for the interactive map."""
+    ward_filter = request.GET.get('ward', 'All')
+    major_category = request.GET.get('major_category', 'All')
+    category = request.GET.get('category', 'All')
+    search_name = request.GET.get('search_name', '')
+    include_density = request.GET.get('density') in ('1', 'true', 'on')
+    density_by_ward = {}
+
+    if include_density and (major_category != 'All' or category != 'All' or search_name):
+        density_query, _ = _filtered_pois(
+            major_category=major_category,
+            category=category,
+            ward='All',
+            search_name=search_name,
+        )
+        counts = {
+            item['ward_id']: item['count']
+            for item in density_query.values('ward_id').annotate(count=Count('id'))
+        }
+        max_count = max(counts.values(), default=0) or 1
+        density_by_ward = {
+            ward_id: {
+                'count': count,
+                'density': round(count / max_count, 4),
+            }
+            for ward_id, count in counts.items()
+        }
+
+    if ward_filter and ward_filter != 'All':
+        ward = Ward.objects.filter(name=ward_filter).only('id', 'name', 'geometry').first()
+        geometry = _selected_ward_geometry(ward_filter)
+        features = []
+        if geometry is not None and ward is not None:
+            density = density_by_ward.get(ward.id, {'count': 0, 'density': 0})
+            features.append({
+                'type': 'Feature',
+                'geometry': json.loads(geometry.geojson),
+                'properties': {
+                    'name': ward_filter,
+                    'selected': True,
+                    'hotspot_count': density['count'],
+                    'hotspot_density': density['density'],
+                },
+            })
+        return JsonResponse({'type': 'FeatureCollection', 'features': features})
+
+    ward_ids = (
+        PointOfInterest.objects
+        .filter(inside_nairobi=True)
+        .order_by()
+        .values_list('ward_id', flat=True)
+        .distinct()
+    )
+    features = [
+        {
+            'type': 'Feature',
+            'geometry': json.loads(ward.geometry.geojson),
+            'properties': {
+                'name': ward.name,
+                'selected': False,
+                'hotspot_count': density_by_ward.get(ward.id, {'count': 0})['count'],
+                'hotspot_density': density_by_ward.get(ward.id, {'density': 0})['density'],
+            },
+        }
+        for ward in Ward.objects.filter(id__in=ward_ids).order_by('name').only('name', 'geometry')
+    ]
+    return JsonResponse({'type': 'FeatureCollection', 'features': features})
 
 
 def place_results(request):
@@ -639,8 +702,8 @@ def _main_service_gap(item):
     services = [service for service in services if service[1] is not None]
     if not services:
         return 'No service data'
-    name, distance = max(services, key=lambda service: service[1])
-    return f'{name} access ({distance} km)'
+    name, _distance = max(services, key=lambda service: service[1])
+    return f'{name} access'
 
 
 def _community_recommendation(item):
@@ -689,15 +752,15 @@ def _community_ward_report(ward_name, service_gaps_all):
         for item in pois.values('major_category').annotate(count=Count('id')).order_by('-count')
     }
     total = sum(counts.values())
-    missing_services = []
+    attention_services = []
     if gap:
         for service in ('health', 'education', 'finance', 'shopping', 'transport'):
-            missing_services.append({
+            attention_services.append({
                 'service': service.title(),
                 'distance': gap.get(f'{service}_km'),
             })
-        missing_services = sorted(
-            missing_services,
+        attention_services = sorted(
+            attention_services,
             key=lambda item: item['distance'] if item['distance'] is not None else -1,
             reverse=True
         )
@@ -707,7 +770,7 @@ def _community_ward_report(ward_name, service_gaps_all):
         'total_pois': total,
         'counts': counts,
         'gap': gap,
-        'missing_services': missing_services[:3],
+        'attention_services': attention_services[:3],
         'recommendation': gap['recommendation'] if gap else 'Select another ward with available service data.',
     }
 

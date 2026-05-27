@@ -29,8 +29,10 @@
             --text-muted: #aebdd0;
             --teal: #35b5a7;
             --blue: #4b8eb8;
-            --green: #5ca77b;
-            --amber: #d7a957;
+            --green: #0b5e2a;
+            --green-soft: #edf7ef;
+            --amber: #c9952d;
+            --amber-soft: #fff7e6;
             --coral: #d97967;
             --plum: #8c7cc3;
             --shadow: 0 16px 34px rgba(3, 7, 18, 0.34);
@@ -65,6 +67,10 @@
             letter-spacing: -0.035em;
             font-size: 1.08rem;
             text-shadow: 0 1px 14px rgba(53, 181, 167, 0.22);
+        }
+
+        .utility-topbar {
+            display: none;
         }
 
         .navbar-nav .nav-link {
@@ -315,10 +321,35 @@
         }
 
         .theme-toggle {
-            min-height: 36px;
-            padding: 0.42rem 0.75rem !important;
+            width: 38px;
+            min-width: 38px;
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.42rem !important;
             border-radius: 999px !important;
-            box-shadow: none !important;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16) !important;
+        }
+
+        .theme-toggle svg {
+            width: 17px;
+            height: 17px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2.2;
+        }
+
+        .theme-toggle .theme-sun,
+        .theme-toggle[data-theme="dark"] .theme-moon {
+            display: none;
+        }
+
+        .theme-toggle[data-theme="dark"] .theme-sun {
+            display: block;
         }
 
         .page-hero {
@@ -370,23 +401,65 @@
             --text-muted: #64748b;
             --shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
             background:
-                linear-gradient(180deg, #ffffff 0%, #ffffff 128px, #eef3f8 128px, #f7fafc 100%);
+                linear-gradient(180deg, #ffffff 0%, #ffffff 118px, #f3f7f4 118px, #f8faf7 100%);
             color: var(--text-main) !important;
+        }
+
+        body.light-theme .utility-topbar {
+            display: block;
+            background: #0b5e2a;
+            color: #ffffff;
+            border-bottom: 3px solid #c9952d;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        body.light-theme .utility-topbar .container-fluid {
+            max-width: 1640px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        body.light-theme .utility-topbar span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.42rem;
+            white-space: nowrap;
+        }
+
+        body.light-theme .utility-topbar .utility-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
         }
 
         body.light-theme .navbar {
             background: #ffffff !important;
-            border-bottom-color: rgba(22, 101, 52, 0.16);
-            box-shadow: none;
-            padding-top: 0.9rem;
-            padding-bottom: 0.9rem;
+            border-bottom-color: rgba(11, 94, 42, 0.16);
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+            padding-top: 0.55rem;
+            padding-bottom: 0.55rem;
         }
 
         body.light-theme .navbar-brand {
-            color: #166534 !important;
-            font-size: 1.35rem;
-            letter-spacing: -0.04em;
+            color: #0b5e2a !important;
+            font-size: 1.12rem;
+            letter-spacing: -0.03em;
             text-shadow: none;
+        }
+
+        body.light-theme .navbar-brand::before {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 28px;
+            margin-right: 0.72rem;
+            vertical-align: middle;
+            background: linear-gradient(180deg, #0b5e2a 0 62%, #c9952d 62% 100%);
+            border-radius: 2px;
         }
 
         body.light-theme .navbar .container-fluid {
@@ -394,29 +467,31 @@
         }
 
         body.light-theme .navbar-nav .nav-link {
-            color: #173f32 !important;
-            border-radius: 999px;
+            color: #214333 !important;
+            border-radius: 6px;
             font-weight: 800;
+            padding: 0.46rem 0.78rem !important;
         }
 
         body.light-theme .navbar-nav .nav-link:hover,
         body.light-theme .navbar-nav .nav-link.active {
-            color: #14532d !important;
-            background: rgba(22, 101, 52, 0.10) !important;
+            color: #0b5e2a !important;
+            background: #edf7ef !important;
+            box-shadow: inset 0 -3px 0 #c9952d;
         }
 
         body.light-theme .card,
         body.light-theme .sidebar {
             background: #ffffff !important;
             color: #172033 !important;
-            border-color: rgba(71, 85, 105, 0.18) !important;
-            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.09);
+            border-color: #d8e3dc !important;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
         }
 
         body.light-theme .card-header {
-            background: #ffffff !important;
-            color: #173f32 !important;
-            border-bottom-color: rgba(22, 101, 52, 0.12) !important;
+            background: #f7faf8 !important;
+            color: #0b5e2a !important;
+            border-bottom-color: rgba(11, 94, 42, 0.14) !important;
         }
 
         body.light-theme .card-body,
@@ -438,8 +513,8 @@
 
         body.light-theme .form-control:focus,
         body.light-theme .form-select:focus {
-            border-color: #166534 !important;
-            box-shadow: 0 0 0 0.16rem rgba(22, 101, 52, 0.12) !important;
+            border-color: #0b5e2a !important;
+            box-shadow: 0 0 0 0.16rem rgba(11, 94, 42, 0.12) !important;
         }
 
         body.light-theme .form-control::placeholder {
@@ -480,8 +555,8 @@
 
         body.light-theme .btn-primary,
         body.light-theme .btn-success {
-            background: #166534 !important;
-            border-color: #166534 !important;
+            background: #0b5e2a !important;
+            border-color: #0b5e2a !important;
         }
 
         body.light-theme .btn-secondary {
@@ -490,20 +565,46 @@
         }
 
         body.light-theme .btn-info {
-            background: #4b8b6a !important;
-            border-color: #4b8b6a !important;
+            background: #c9952d !important;
+            border-color: #c9952d !important;
+            color: #172033 !important;
         }
 
         body.light-theme .btn-outline-secondary {
-            color: #166534 !important;
+            color: #0b5e2a !important;
             background: #ffffff !important;
-            border-color: #166534 !important;
+            border-color: #0b5e2a !important;
+        }
+
+        @media (max-width: 991px) {
+            body.light-theme .utility-topbar .container-fluid {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.15rem;
+                padding-top: 0.4rem;
+                padding-bottom: 0.4rem;
+            }
+
+            body.light-theme .utility-topbar .utility-links {
+                flex-wrap: wrap;
+                gap: 0.5rem 0.85rem;
+            }
         }
     </style>
 
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <div class="utility-topbar">
+        <div class="container-fluid">
+            <span>Nairobi Location Intelligence</span>
+            <div class="utility-links">
+                <span>Spatial analysis</span>
+                <span>Service access</span>
+                <span>Opportunity mapping</span>
+            </div>
+        </div>
+    </div>
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'location_intelligence:index' %}">
@@ -535,7 +636,18 @@
                            href="{% url 'location_intelligence:community_needs' %}">Community Needs</a>
                     </li>
                     <li class="nav-item ms-lg-2">
-                        <button type="button" class="btn btn-secondary theme-toggle" id="theme-toggle">Light</button>
+                        <button type="button" class="btn btn-secondary theme-toggle" id="theme-toggle" aria-label="Switch theme" title="Switch theme">
+                            <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8z"></path>
+                            </svg>
+                            <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="4"></circle>
+                                <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                                <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                                <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                                <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+                            </svg>
+                        </button>
                     </li>
                 </ul>
             </div>
@@ -552,6 +664,7 @@
     <!-- Leaflet JS -->
     {% leaflet_js %}
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
     <script>
         (function() {
@@ -561,7 +674,10 @@
             function setTheme(theme) {
                 body.classList.toggle('light-theme', theme === 'light');
                 if (toggle) {
-                    toggle.textContent = theme === 'light' ? 'Dark' : 'Light';
+                    toggle.dataset.theme = theme;
+                    const nextTheme = theme === 'light' ? 'dark' : 'light';
+                    toggle.setAttribute('aria-label', 'Switch to ' + nextTheme + ' mode');
+                    toggle.setAttribute('title', 'Switch to ' + nextTheme + ' mode');
                 }
                 localStorage.setItem('nli-theme', theme);
             }
