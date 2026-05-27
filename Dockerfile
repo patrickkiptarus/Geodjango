@@ -23,4 +23,4 @@ COPY . .
 
 RUN python manage.py collectstatic --noinput
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py load_data --data-dir static/data && gunicorn nairobi_location_intelligence.wsgi:application --bind 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py load_data --data-dir static/data && gunicorn nairobi_location_intelligence.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
